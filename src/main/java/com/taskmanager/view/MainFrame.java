@@ -1,26 +1,35 @@
 package com.taskmanager.view;
 
 import com.taskmanager.config.ConfigurationDialog;
+import com.taskmanager.controller.DashboardController;
 import com.taskmanager.controller.TaskController;
 import com.taskmanager.repository.TaskRepository;
 import com.taskmanager.service.TaskServiceImpl;
 import com.taskmanager.view.components.CardPanel;
 import com.taskmanager.view.theme.AppTheme;
 
+import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
+import java.awt.Dialog;
 import java.awt.Dimension;
+import java.awt.Toolkit;
+import java.awt.Window;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
 
 /**
  * Main application window providing full desktop navigation, sidebar, and task
@@ -38,6 +47,8 @@ public class MainFrame extends JFrame {
 
     private TaskPanel taskPanel;
     private TaskController taskController;
+    private DashboardPanel dashboardPanel;
+    private DashboardController dashboardController;
 
     private JButton navDashboardButton;
     private JButton navTasksButton;
@@ -56,6 +67,7 @@ public class MainFrame extends JFrame {
         initServicesAndViews();
         initMenuBar();
         initLayout();
+        initKeyBindings();
 
         contentLayout.show(contentArea, VIEW_TASKS);
     }
@@ -65,6 +77,8 @@ public class MainFrame extends JFrame {
         TaskServiceImpl taskService = new TaskServiceImpl(repository);
         taskPanel = new TaskPanel();
         taskController = new TaskController(taskService, taskPanel);
+        dashboardController = new DashboardController(taskService);
+        dashboardPanel = new DashboardPanel(dashboardController);
     }
 
     private void initMenuBar() {
@@ -92,7 +106,7 @@ public class MainFrame extends JFrame {
         rootPanel.add(createSidebar(), BorderLayout.WEST);
 
         contentArea.setOpaque(false);
-        contentArea.add(createDashboardPlaceholder(), VIEW_DASHBOARD);
+        contentArea.add(dashboardPanel, VIEW_DASHBOARD);
         contentArea.add(taskPanel, VIEW_TASKS);
 
         rootPanel.add(contentArea, BorderLayout.CENTER);
@@ -122,6 +136,9 @@ public class MainFrame extends JFrame {
         navDashboardButton.addActionListener(e -> {
             contentLayout.show(contentArea, VIEW_DASHBOARD);
             updateNavSelection(false);
+            if (dashboardPanel != null) {
+                dashboardPanel.refreshStats();
+            }
         });
 
         JButton navSettingsButton = createNavButton("⚙️  Settings", false);
@@ -165,27 +182,14 @@ public class MainFrame extends JFrame {
         styleNavButton(navDashboardButton, !tasksActive);
     }
 
-    private JPanel createDashboardPlaceholder() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setOpaque(false);
-        panel.setBorder(BorderFactory.createEmptyBorder(AppTheme.SPACING, AppTheme.SPACING, AppTheme.SPACING,
-                AppTheme.SPACING));
-
-        CardPanel card = new CardPanel(new BorderLayout());
-        JLabel label = new JLabel("Dashboard Overview (Phase 5 Analytics)", SwingConstants.CENTER);
-        label.setFont(AppTheme.FONT_SUBHEADING);
-        label.setForeground(AppTheme.TEXT_MUTED);
-        card.add(label, BorderLayout.CENTER);
-
-        panel.add(card, BorderLayout.CENTER);
-        return panel;
-    }
-
     private void openSettingsDialog() {
         ConfigurationDialog dialog = new ConfigurationDialog(this);
         dialog.setVisible(true);
         if (taskController != null) {
             taskController.refreshTable();
+        }
+        if (dashboardPanel != null) {
+            dashboardPanel.refreshStats();
         }
     }
 
@@ -195,5 +199,65 @@ public class MainFrame extends JFrame {
 
     public TaskController getTaskController() {
         return taskController;
+    }
+
+    public DashboardPanel getDashboardPanel() {
+        return dashboardPanel;
+    }
+
+    public DashboardController getDashboardController() {
+        return dashboardController;
+    }
+
+    private void initKeyBindings() {
+        int shortcutMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
+
+        KeyStroke ctrlN = KeyStroke.getKeyStroke(KeyEvent.VK_N, shortcutMask);
+        KeyStroke ctrlF = KeyStroke.getKeyStroke(KeyEvent.VK_F, shortcutMask);
+
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(ctrlN, "actionAddNewTask");
+        getRootPane().getActionMap().put("actionAddNewTask", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (isModalDialogOpen()) {
+                    return;
+                }
+                contentLayout.show(contentArea, VIEW_TASKS);
+                updateNavSelection(true);
+                if (taskController != null) {
+                    taskController.onAddClicked();
+                }
+            }
+        });
+
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(ctrlF, "actionFocusSearch");
+        getRootPane().getActionMap().put("actionFocusSearch", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (isModalDialogOpen()) {
+                    return;
+                }
+                contentLayout.show(contentArea, VIEW_TASKS);
+                updateNavSelection(true);
+                if (taskPanel != null && taskPanel.getSearchField() != null) {
+                    taskPanel.getSearchField().requestFocusInWindow();
+                    taskPanel.getSearchField().selectAll();
+                }
+            }
+        });
+    }
+
+    /**
+     * Determines whether any owned modal dialog is currently open and visible.
+     *
+     * @return true if a modal dialog is currently visible
+     */
+    public boolean isModalDialogOpen() {
+        for (Window window : getOwnedWindows()) {
+            if (window.isVisible() && window instanceof Dialog && ((Dialog) window).isModal()) {
+                return true;
+            }
+        }
+        return false;
     }
 }

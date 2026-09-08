@@ -17,6 +17,7 @@ import javax.swing.SwingWorker;
 import java.awt.Window;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Controller mediating user interactions between {@link TaskPanel}, {@link TaskFormDialog},
@@ -30,6 +31,7 @@ public class TaskController {
 
     private final TaskServiceImpl taskService;
     private final TaskPanel taskPanel;
+    private final AtomicLong searchSequence = new AtomicLong(0);
 
     /**
      * Constructs the TaskController, wires UI event listeners, and registers
@@ -81,6 +83,12 @@ public class TaskController {
                     EventBus.getInstance().publish(new TaskProcessedEvent(created));
                 } catch (Exception ex) {
                     LOGGER.error("Failed to create task asynchronously", ex);
+                    SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(
+                            parent,
+                            "Failed to create task: " + ex.getMessage(),
+                            "Error",
+                            JOptionPane.ERROR_MESSAGE
+                    ));
                 }
             });
         }
@@ -115,6 +123,12 @@ public class TaskController {
                     EventBus.getInstance().publish(new TaskProcessedEvent(updated));
                 } catch (Exception ex) {
                     LOGGER.error("Failed to update task asynchronously", ex);
+                    SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(
+                            parent,
+                            "Failed to update task: " + ex.getMessage(),
+                            "Error",
+                            JOptionPane.ERROR_MESSAGE
+                    ));
                 }
             });
         }
@@ -155,6 +169,12 @@ public class TaskController {
                     EventBus.getInstance().publish(new TaskProcessedEvent(snapshot));
                 } catch (Exception ex) {
                     LOGGER.error("Failed to delete task asynchronously", ex);
+                    SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(
+                            parent,
+                            "Failed to delete task: " + ex.getMessage(),
+                            "Error",
+                            JOptionPane.ERROR_MESSAGE
+                    ));
                 }
             });
         }
@@ -166,6 +186,7 @@ public class TaskController {
      * @param keyword the search query
      */
     public void onSearch(String keyword) {
+        final long currentSeq = searchSequence.incrementAndGet();
         if (keyword == null || keyword.trim().isEmpty()) {
             refreshTable();
             return;
@@ -185,10 +206,13 @@ public class TaskController {
 
             @Override
             protected void done() {
+                if (currentSeq != searchSequence.get()) {
+                    return; // Stale search result discarded
+                }
                 try {
                     List<Task> results = get();
                     taskPanel.getTableModel().setTasks(results);
-                    taskPanel.updateViewMode();
+                    taskPanel.updateViewMode(true);
                 } catch (Exception ex) {
                     LOGGER.error("Search operation failed for query: " + query, ex);
                 }
@@ -202,6 +226,7 @@ public class TaskController {
      * @param filter the selected filter name
      */
     public void onFilterChanged(String filter) {
+        final long currentSeq = searchSequence.incrementAndGet();
         if (filter == null || "All Tasks".equalsIgnoreCase(filter)) {
             refreshTable();
             return;
@@ -225,10 +250,13 @@ public class TaskController {
 
             @Override
             protected void done() {
+                if (currentSeq != searchSequence.get()) {
+                    return; // Stale filter result discarded
+                }
                 try {
                     List<Task> results = get();
                     taskPanel.getTableModel().setTasks(results);
-                    taskPanel.updateViewMode();
+                    taskPanel.updateViewMode(true);
                 } catch (Exception ex) {
                     LOGGER.error("Filter operation failed for: " + filter, ex);
                 }
@@ -254,6 +282,7 @@ public class TaskController {
      * Refreshes the table view with the latest tasks from the database via {@link SwingWorker}.
      */
     public void refreshTable() {
+        final long currentSeq = searchSequence.incrementAndGet();
         new SwingWorker<List<Task>, Void>() {
             @Override
             protected List<Task> doInBackground() {
@@ -262,14 +291,21 @@ public class TaskController {
 
             @Override
             protected void done() {
+                if (currentSeq != searchSequence.get()) {
+                    return; // Stale refresh discarded
+                }
                 try {
                     List<Task> tasks = get();
                     taskPanel.getTableModel().setTasks(tasks);
-                    taskPanel.updateViewMode();
+                    taskPanel.updateViewMode(taskPanel.isFilterActive());
                 } catch (Exception ex) {
                     LOGGER.error("Failed to refresh task table", ex);
                 }
             }
         }.execute();
+    }
+
+    public long getCurrentSearchSequence() {
+        return searchSequence.get();
     }
 }

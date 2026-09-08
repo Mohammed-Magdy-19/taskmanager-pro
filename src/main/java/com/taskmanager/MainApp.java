@@ -42,8 +42,18 @@ public class MainApp {
      */
     public static void launchMainApp() {
         LOGGER.info("Launching MainFrame.");
-        com.taskmanager.view.MainFrame mainFrame = new com.taskmanager.view.MainFrame();
-        mainFrame.setVisible(true);
-        new com.taskmanager.service.NotificationServiceImpl();
+        try {
+            com.taskmanager.view.MainFrame mainFrame = new com.taskmanager.view.MainFrame();
+            mainFrame.setVisible(true);
+            new com.taskmanager.service.NotificationServiceImpl();
+        } catch (Exception e) {
+            LOGGER.error("Fatal error during application launch: " + e.getMessage(), e);
+            javax.swing.JOptionPane.showMessageDialog(
+                    null,
+                    "Failed to start Task Manager: " + e.getMessage(),
+                    "Startup Error",
+                    javax.swing.JOptionPane.ERROR_MESSAGE
+            );
+        }
     }
 }

@@ -28,13 +28,16 @@ import java.awt.FlowLayout;
  */
 public class TaskPanel extends JPanel {
 
-    private static final String VIEW_TABLE = "TABLE_VIEW";
-    private static final String VIEW_EMPTY = "EMPTY_VIEW";
+    public static final String VIEW_TABLE = "TABLE_VIEW";
+    public static final String VIEW_EMPTY = "EMPTY_VIEW";
+    public static final String VIEW_NO_RESULTS = "NO_RESULTS_VIEW";
 
     private final TaskTableModel tableModel;
     private final JTable taskTable;
     private final CardLayout contentCardLayout;
     private final JPanel contentCardPanel;
+
+    private String currentViewMode = VIEW_TABLE;
 
     private JTextField searchField;
     private JComboBox<String> filterComboBox;
@@ -76,6 +79,7 @@ public class TaskPanel extends JPanel {
 
         contentCardPanel.add(tableCard, VIEW_TABLE);
         contentCardPanel.add(createEmptyStatePanel(), VIEW_EMPTY);
+        contentCardPanel.add(createNoResultsPanel(), VIEW_NO_RESULTS);
 
         add(contentCardPanel, BorderLayout.CENTER);
         updateViewMode();
@@ -156,6 +160,33 @@ public class TaskPanel extends JPanel {
         return emptyCard;
     }
 
+    private JPanel createNoResultsPanel() {
+        CardPanel emptyCard = new CardPanel(new BorderLayout());
+
+        JPanel centerBox = new JPanel();
+        centerBox.setLayout(new BoxLayout(centerBox, BoxLayout.Y_AXIS));
+        centerBox.setOpaque(false);
+
+        JLabel titleLabel = new JLabel("No results for your search", SwingConstants.CENTER);
+        titleLabel.setFont(AppTheme.FONT_SUBHEADING);
+        titleLabel.setForeground(AppTheme.TEXT_PRIMARY);
+        titleLabel.setAlignmentX(CENTER_ALIGNMENT);
+
+        JLabel hintLabel = new JLabel("Try searching with different keywords or clearing the active filter.", SwingConstants.CENTER);
+        hintLabel.setFont(AppTheme.FONT_BODY);
+        hintLabel.setForeground(AppTheme.TEXT_MUTED);
+        hintLabel.setAlignmentX(CENTER_ALIGNMENT);
+
+        centerBox.add(Box.createVerticalGlue());
+        centerBox.add(titleLabel);
+        centerBox.add(Box.createVerticalStrut(AppTheme.SPACING / 2));
+        centerBox.add(hintLabel);
+        centerBox.add(Box.createVerticalGlue());
+
+        emptyCard.add(centerBox, BorderLayout.CENTER);
+        return emptyCard;
+    }
+
     private void initSelectionListener() {
         taskTable.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
@@ -167,15 +198,47 @@ public class TaskPanel extends JPanel {
     }
 
     /**
-     * Toggles between table view and empty state based on row count.
+     * Updates the visible card based on row count and whether a search or filter is active.
+     *
+     * @param isFilterOrSearchActive true if search text or category filter is actively filtering
      */
-    public void updateViewMode() {
+    public void updateViewMode(boolean isFilterOrSearchActive) {
         SwingSafe.assertEDT();
         if (tableModel.getRowCount() == 0) {
-            contentCardLayout.show(contentCardPanel, VIEW_EMPTY);
+            currentViewMode = isFilterOrSearchActive ? VIEW_NO_RESULTS : VIEW_EMPTY;
         } else {
-            contentCardLayout.show(contentCardPanel, VIEW_TABLE);
+            currentViewMode = VIEW_TABLE;
         }
+        contentCardLayout.show(contentCardPanel, currentViewMode);
+    }
+
+    /**
+     * Toggles between table view, empty state, and no-results state based on row count and current filter status.
+     */
+    public void updateViewMode() {
+        updateViewMode(isFilterActive());
+    }
+
+    /**
+     * Checks if a keyword search or category filter is currently active in the toolbar.
+     *
+     * @return true if filter or search query is active
+     */
+    public boolean isFilterActive() {
+        String text = searchField != null ? searchField.getText() : null;
+        boolean hasSearch = text != null && !text.trim().isEmpty();
+        Object selectedFilter = filterComboBox != null ? filterComboBox.getSelectedItem() : null;
+        boolean hasFilter = selectedFilter != null && !"All Tasks".equalsIgnoreCase(selectedFilter.toString());
+        return hasSearch || hasFilter;
+    }
+
+    /**
+     * Retrieves the identifier of the currently active view card.
+     *
+     * @return one of {@link #VIEW_TABLE}, {@link #VIEW_EMPTY}, or {@link #VIEW_NO_RESULTS}
+     */
+    public String getCurrentViewMode() {
+        return currentViewMode;
     }
 
     public TaskTableModel getTableModel() {

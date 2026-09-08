@@ -161,7 +161,8 @@ public final class AppTheme {
      * @param theme preference (e.g. "Dark", "Light", or "System")
      */
     public static void setupLookAndFeel(String theme) {
-        if ("Dark".equalsIgnoreCase(theme)) {
+        String resolved = ThemeSelector.resolveTheme(theme);
+        if (ThemeSelector.isDark(resolved)) {
             FlatDarkLaf.setup();
         } else {
             FlatLightLaf.setup();
