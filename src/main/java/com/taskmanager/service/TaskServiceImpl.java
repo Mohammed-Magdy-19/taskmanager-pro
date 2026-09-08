@@ -1,7 +1,7 @@
 package com.taskmanager.service;
 
 import com.taskmanager.model.Task;
-import com.taskmanager.repository.GenericRepository;
+import com.taskmanager.repository.TaskRepository;
 
 import java.time.LocalDateTime;
 
@@ -9,21 +9,48 @@ import java.time.LocalDateTime;
  * Service implementation for managing {@link Task} entities.
  * Extends {@link GenericService} using the Template Method pattern.
  *
- * <p><em>Note: Inline validation logic implemented here is temporary until Phase 4
- * introduces the dedicated {@code Validator<T>} and {@code TaskValidator} components.</em></p>
+ * <p>
+ * <em>Note: Inline validation logic implemented here is temporary until Phase 4
+ * introduces the dedicated {@code Validator<T>} and {@code TaskValidator}
+ * components.</em>
+ * </p>
  */
 public class TaskServiceImpl extends GenericService<Task> {
 
     /** Maximum permitted length for a task title. */
     public static final int MAX_TITLE_LENGTH = 100;
 
+    private final TaskRepository taskRepository;
+
     /**
-     * Constructs a task service with the given task repository.
+     * Constructs a task service with the given SQLite task repository.
      *
-     * @param repository the repository managing task persistence
+     * @param repository the task repository managing persistence
      */
-    public TaskServiceImpl(GenericRepository<Task> repository) {
+    public TaskServiceImpl(TaskRepository repository) {
         super(repository);
+        this.taskRepository = repository;
+    }
+
+    /**
+     * Constructs a task service with a generic task repository (supports test
+     * doubles).
+     *
+     * @param repository the generic repository managing task persistence
+     */
+    public TaskServiceImpl(com.taskmanager.repository.GenericRepository<Task> repository) {
+        super(repository);
+        this.taskRepository = (repository instanceof TaskRepository) ? (TaskRepository) repository : null;
+    }
+
+    /**
+     * Retrieves the typed TaskRepository.
+     *
+     * @return the TaskRepository, or null if backed by another repository
+     *         implementation
+     */
+    public TaskRepository getTaskRepository() {
+        return taskRepository;
     }
 
     @Override
