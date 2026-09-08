@@ -5,6 +5,7 @@ import com.taskmanager.config.wizard.PreferencesStep;
 import com.taskmanager.config.wizard.ReminderStep;
 import com.taskmanager.config.wizard.WizardData;
 import com.taskmanager.config.wizard.WizardStepPanel;
+import com.taskmanager.view.theme.AppTheme;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -24,8 +25,8 @@ import java.util.List;
  */
 public class ConfigurationDialog extends JDialog {
 
-    private static final int DIALOG_WIDTH = 560;
-    private static final int DIALOG_HEIGHT = 420;
+    private static final int DIALOG_WIDTH = 580;
+    private static final int DIALOG_HEIGHT = 440;
 
     private final WizardData settingsData = new WizardData();
     private final List<WizardStepPanel> stepPanels = new ArrayList<>();
@@ -55,6 +56,7 @@ public class ConfigurationDialog extends JDialog {
         setSize(new Dimension(DIALOG_WIDTH, DIALOG_HEIGHT));
         setResizable(false);
         setLocationRelativeTo(getOwner());
+        getContentPane().setBackground(AppTheme.BG_APP);
         setLayout(new BorderLayout());
     }
 
@@ -69,6 +71,8 @@ public class ConfigurationDialog extends JDialog {
 
     private void initTabs() {
         JTabbedPane tabbedPane = new JTabbedPane();
+        tabbedPane.setFont(AppTheme.FONT_BUTTON);
+        tabbedPane.setBorder(BorderFactory.createEmptyBorder(AppTheme.SPACING, AppTheme.SPACING, 0, AppTheme.SPACING));
 
         DatabaseStep dbStep = new DatabaseStep(settingsData);
         PreferencesStep prefStep = new PreferencesStep(settingsData);
@@ -86,14 +90,20 @@ public class ConfigurationDialog extends JDialog {
     }
 
     private void initControls() {
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
-        buttonPanel.setBorder(BorderFactory.createEmptyBorder(0, 8, 8, 8));
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, AppTheme.SPACING, AppTheme.SPACING));
+        buttonPanel.setOpaque(false);
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(0, AppTheme.SPACING, AppTheme.SPACING, AppTheme.SPACING));
 
         JButton cancelButton = new JButton("Cancel");
+        cancelButton.setFont(AppTheme.FONT_BUTTON);
         cancelButton.addActionListener(e -> dispose());
         buttonPanel.add(cancelButton);
 
         JButton saveButton = new JButton("Save Changes");
+        saveButton.setFont(AppTheme.FONT_BUTTON);
+        saveButton.setBackground(AppTheme.PRIMARY);
+        saveButton.setForeground(AppTheme.TEXT_INVERTED);
+        saveButton.putClientProperty("JButton.buttonType", "roundRect");
         saveButton.addActionListener(e -> onSave());
         buttonPanel.add(saveButton);
 

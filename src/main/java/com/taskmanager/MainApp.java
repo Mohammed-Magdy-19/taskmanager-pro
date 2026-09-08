@@ -3,6 +3,7 @@ package com.taskmanager;
 import com.taskmanager.config.ConfigManager;
 import com.taskmanager.config.ConfigWizardFrame;
 import com.taskmanager.util.AppLogger;
+import com.taskmanager.view.theme.AppTheme;
 
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -11,7 +12,7 @@ import javax.swing.SwingUtilities;
 
 /**
  * Main entry point of the Task Manager desktop application.
- * Evaluates whether an initial setup is required prior to starting the primary workspace.
+ * Initializes the visual theme and evaluates whether initial setup is required.
  */
 public class MainApp {
 
@@ -24,6 +25,9 @@ public class MainApp {
      */
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
+            String theme = ConfigManager.getInstance().getProperty(ConfigManager.KEY_APP_THEME, "Light");
+            AppTheme.setupLookAndFeel(theme);
+
             if (!ConfigManager.configExists()) {
                 LOGGER.info("No existing configuration found. Launching ConfigWizardFrame.");
                 new ConfigWizardFrame(MainApp::launchMainApp).setVisible(true);
@@ -45,6 +49,7 @@ public class MainApp {
         frame.setSize(800, 600);
         frame.setLocationRelativeTo(null);
         JLabel placeholderLabel = new JLabel("Main app would launch here (Phase 4)", SwingConstants.CENTER);
+        placeholderLabel.setFont(AppTheme.FONT_HEADING);
         frame.add(placeholderLabel);
         frame.setVisible(true);
     }

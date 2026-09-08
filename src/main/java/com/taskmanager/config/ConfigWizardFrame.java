@@ -6,7 +6,9 @@ import com.taskmanager.config.wizard.ReminderStep;
 import com.taskmanager.config.wizard.SummaryStep;
 import com.taskmanager.config.wizard.WelcomeStep;
 import com.taskmanager.config.wizard.WizardData;
+import com.taskmanager.config.wizard.WizardStepIndicator;
 import com.taskmanager.config.wizard.WizardStepPanel;
+import com.taskmanager.view.theme.AppTheme;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -21,8 +23,8 @@ import java.util.List;
 
 /**
  * First-run configuration wizard window.
- * Guides the user through initial application setup before the main workspace is created.
- * Uses a fixed-size {@link CardLayout} to present sequential configuration steps.
+ * Presents a modern, guided setup flow styled with {@link AppTheme} design tokens,
+ * custom step progress indicators, and card containers.
  */
 public class ConfigWizardFrame extends JFrame {
 
@@ -30,7 +32,7 @@ public class ConfigWizardFrame extends JFrame {
             "WELCOME", "DATABASE", "PREFERENCES", "REMINDER", "SUMMARY"
     };
     private static final int FRAME_WIDTH = 560;
-    private static final int FRAME_HEIGHT = 400;
+    private static final int FRAME_HEIGHT = 420;
 
     private final CardLayout cardLayout = new CardLayout();
     private final JPanel cardPanel = new JPanel(cardLayout);
@@ -38,7 +40,9 @@ public class ConfigWizardFrame extends JFrame {
     private final WizardData wizardData = new WizardData();
     private final Runnable onFinish;
 
+    private WizardStepIndicator stepIndicator;
     private int currentStep = 0;
+
     private JButton backButton;
     private JButton nextButton;
     private JButton finishButton;
@@ -54,6 +58,7 @@ public class ConfigWizardFrame extends JFrame {
         this.onFinish = onFinish;
 
         initWindow();
+        initTopIndicator();
         initSteps();
         initControls();
         updateButtonState();
@@ -64,17 +69,34 @@ public class ConfigWizardFrame extends JFrame {
         setSize(new Dimension(FRAME_WIDTH, FRAME_HEIGHT));
         setResizable(false);
         setLocationRelativeTo(null);
+        getContentPane().setBackground(AppTheme.BG_APP);
         setLayout(new BorderLayout());
     }
 
+    private void initTopIndicator() {
+        stepIndicator = new WizardStepIndicator(STEP_KEYS.length);
+        JPanel topWrapper = new JPanel(new BorderLayout());
+        topWrapper.setOpaque(false);
+        topWrapper.setBorder(BorderFactory.createEmptyBorder(AppTheme.SPACING, AppTheme.SPACING * 2, 0, AppTheme.SPACING * 2));
+        topWrapper.add(stepIndicator, BorderLayout.CENTER);
+        add(topWrapper, BorderLayout.NORTH);
+    }
+
     private void initSteps() {
+        cardPanel.setOpaque(false);
+
         addStepPanel(new WelcomeStep(), STEP_KEYS[0]);
         addStepPanel(new DatabaseStep(wizardData), STEP_KEYS[1]);
         addStepPanel(new PreferencesStep(wizardData), STEP_KEYS[2]);
         addStepPanel(new ReminderStep(wizardData), STEP_KEYS[3]);
         addStepPanel(new SummaryStep(wizardData), STEP_KEYS[4]);
 
-        add(cardPanel, BorderLayout.CENTER);
+        JPanel cardWrapper = new JPanel(new BorderLayout());
+        cardWrapper.setOpaque(false);
+        cardWrapper.setBorder(BorderFactory.createEmptyBorder(AppTheme.SPACING / 2, AppTheme.SPACING * 2, AppTheme.SPACING, AppTheme.SPACING * 2));
+        cardWrapper.add(cardPanel, BorderLayout.CENTER);
+
+        add(cardWrapper, BorderLayout.CENTER);
     }
 
     private void addStepPanel(JPanel panel, String stepKey) {
@@ -86,22 +108,39 @@ public class ConfigWizardFrame extends JFrame {
 
     private void initControls() {
         JPanel bottomPanel = new JPanel(new BorderLayout());
-        bottomPanel.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
+        bottomPanel.setOpaque(false);
+        bottomPanel.setBorder(BorderFactory.createEmptyBorder(0, AppTheme.SPACING * 2, AppTheme.SPACING * 2, AppTheme.SPACING * 2));
 
         cancelButton = new JButton("Cancel");
+        cancelButton.setFont(AppTheme.FONT_BUTTON);
+        cancelButton.setForeground(AppTheme.TEXT_MUTED);
+        cancelButton.putClientProperty("JButton.buttonType", "borderless");
         cancelButton.addActionListener(e -> onCancel());
         bottomPanel.add(cancelButton, BorderLayout.WEST);
 
-        JPanel navPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        JPanel navPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, AppTheme.SPACING, 0));
+        navPanel.setOpaque(false);
+
         backButton = new JButton("Back");
+        backButton.setFont(AppTheme.FONT_BUTTON);
+        backButton.setForeground(AppTheme.TEXT_PRIMARY);
+        backButton.putClientProperty("JButton.buttonType", "roundRect");
         backButton.addActionListener(e -> onBack());
         navPanel.add(backButton);
 
         nextButton = new JButton("Next");
+        nextButton.setFont(AppTheme.FONT_BUTTON);
+        nextButton.setBackground(AppTheme.PRIMARY);
+        nextButton.setForeground(AppTheme.TEXT_INVERTED);
+        nextButton.putClientProperty("JButton.buttonType", "roundRect");
         nextButton.addActionListener(e -> onNext());
         navPanel.add(nextButton);
 
         finishButton = new JButton("Finish");
+        finishButton.setFont(AppTheme.FONT_BUTTON);
+        finishButton.setBackground(AppTheme.PRIMARY);
+        finishButton.setForeground(AppTheme.TEXT_INVERTED);
+        finishButton.putClientProperty("JButton.buttonType", "roundRect");
         finishButton.addActionListener(e -> onFinishAction());
         finishButton.setVisible(false);
         navPanel.add(finishButton);
@@ -128,6 +167,7 @@ public class ConfigWizardFrame extends JFrame {
 
     private void showCurrentStep() {
         stepPanels.get(currentStep).refresh(wizardData);
+        stepIndicator.setCurrentStep(currentStep);
         cardLayout.show(cardPanel, STEP_KEYS[currentStep]);
         updateButtonState();
     }

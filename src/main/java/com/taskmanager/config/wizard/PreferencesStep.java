@@ -1,20 +1,22 @@
 package com.taskmanager.config.wizard;
 
-import javax.swing.BorderFactory;
+import com.taskmanager.view.components.CardPanel;
+import com.taskmanager.view.theme.AppTheme;
+
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import java.awt.BorderLayout;
-import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 
 /**
  * Wizard panel configuring visual theme, language, and background backup settings.
+ * Uses CardPanel container styling and standardized typography.
  */
-public class PreferencesStep extends JPanel implements WizardStepPanel {
+public class PreferencesStep extends CardPanel implements WizardStepPanel {
 
     private static final String[] THEMES = {"Light", "Dark", "System"};
     private static final String[] LANGUAGES = {"English"};
@@ -29,26 +31,32 @@ public class PreferencesStep extends JPanel implements WizardStepPanel {
      * @param data existing configuration values
      */
     public PreferencesStep(WizardData data) {
-        setLayout(new BorderLayout(16, 16));
-        setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
+        super(new BorderLayout(AppTheme.SPACING, AppTheme.SPACING));
 
         JLabel titleLabel = new JLabel("Application Preferences");
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        titleLabel.setFont(AppTheme.FONT_HEADING);
+        titleLabel.setForeground(AppTheme.TEXT_PRIMARY);
         add(titleLabel, BorderLayout.NORTH);
 
         JPanel contentPanel = new JPanel(new GridBagLayout());
+        contentPanel.setOpaque(false);
+
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(8, 8, 8, 8);
+        gbc.insets = new Insets(AppTheme.SPACING / 2, AppTheme.SPACING / 2, AppTheme.SPACING / 2, AppTheme.SPACING / 2);
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
         gbc.gridx = 0;
         gbc.gridy = 0;
         gbc.weightx = 0;
-        contentPanel.add(new JLabel("Theme:"), gbc);
+        JLabel themeLabel = new JLabel("Interface Theme:");
+        themeLabel.setFont(AppTheme.FONT_BODY_BOLD);
+        themeLabel.setForeground(AppTheme.TEXT_PRIMARY);
+        contentPanel.add(themeLabel, gbc);
 
         gbc.gridx = 1;
         gbc.weightx = 1.0;
         themeComboBox = new JComboBox<>(THEMES);
+        themeComboBox.setFont(AppTheme.FONT_BODY);
         if (data != null && data.getTheme() != null) {
             themeComboBox.setSelectedItem(data.getTheme());
         }
@@ -57,11 +65,15 @@ public class PreferencesStep extends JPanel implements WizardStepPanel {
         gbc.gridx = 0;
         gbc.gridy = 1;
         gbc.weightx = 0;
-        contentPanel.add(new JLabel("Language:"), gbc);
+        JLabel langLabel = new JLabel("Language:");
+        langLabel.setFont(AppTheme.FONT_BODY_BOLD);
+        langLabel.setForeground(AppTheme.TEXT_PRIMARY);
+        contentPanel.add(langLabel, gbc);
 
         gbc.gridx = 1;
         gbc.weightx = 1.0;
         languageComboBox = new JComboBox<>(LANGUAGES);
+        languageComboBox.setFont(AppTheme.FONT_BODY);
         if (data != null && data.getLanguage() != null) {
             languageComboBox.setSelectedItem(data.getLanguage());
         }
@@ -71,6 +83,9 @@ public class PreferencesStep extends JPanel implements WizardStepPanel {
         gbc.gridy = 2;
         gbc.gridwidth = 2;
         autoBackupCheckBox = new JCheckBox("Enable automatic periodic backups (Phase 6)");
+        autoBackupCheckBox.setFont(AppTheme.FONT_BODY);
+        autoBackupCheckBox.setForeground(AppTheme.TEXT_PRIMARY);
+        autoBackupCheckBox.setOpaque(false);
         autoBackupCheckBox.setSelected(data == null || data.isAutoBackup());
         contentPanel.add(autoBackupCheckBox, gbc);
 

@@ -1,10 +1,11 @@
 package com.taskmanager.config.wizard;
 
-import javax.swing.BorderFactory;
+import com.taskmanager.view.components.CardPanel;
+import com.taskmanager.view.theme.AppTheme;
+
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import java.awt.BorderLayout;
-import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -12,8 +13,9 @@ import java.awt.Insets;
 /**
  * Final wizard panel displaying a read-only summary of chosen configuration parameters
  * before the user finalizes the setup.
+ * Uses CardPanel container styling and standardized typography.
  */
-public class SummaryStep extends JPanel implements WizardStepPanel {
+public class SummaryStep extends CardPanel implements WizardStepPanel {
 
     private final JLabel dbPathValLabel = new JLabel();
     private final JLabel themeValLabel = new JLabel();
@@ -27,16 +29,18 @@ public class SummaryStep extends JPanel implements WizardStepPanel {
      * @param data initial wizard configuration state
      */
     public SummaryStep(WizardData data) {
-        setLayout(new BorderLayout(16, 16));
-        setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
+        super(new BorderLayout(AppTheme.SPACING, AppTheme.SPACING));
 
         JLabel titleLabel = new JLabel("Configuration Summary");
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        titleLabel.setFont(AppTheme.FONT_HEADING);
+        titleLabel.setForeground(AppTheme.TEXT_PRIMARY);
         add(titleLabel, BorderLayout.NORTH);
 
         JPanel contentPanel = new JPanel(new GridBagLayout());
+        contentPanel.setOpaque(false);
+
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(6, 6, 6, 6);
+        gbc.insets = new Insets(AppTheme.SPACING / 3, AppTheme.SPACING / 2, AppTheme.SPACING / 3, AppTheme.SPACING / 2);
         gbc.anchor = GridBagConstraints.WEST;
 
         addSummaryRow(contentPanel, gbc, 0, "Database File:", dbPathValLabel);
@@ -48,9 +52,10 @@ public class SummaryStep extends JPanel implements WizardStepPanel {
         gbc.gridx = 0;
         gbc.gridy = 5;
         gbc.gridwidth = 2;
-        gbc.insets = new Insets(16, 6, 6, 6);
+        gbc.insets = new Insets(AppTheme.SPACING, AppTheme.SPACING / 2, 0, AppTheme.SPACING / 2);
         JLabel noteLabel = new JLabel("Click 'Finish' to save these settings and launch Task Manager.");
-        noteLabel.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+        noteLabel.setFont(AppTheme.FONT_CAPTION);
+        noteLabel.setForeground(AppTheme.TEXT_MUTED);
         contentPanel.add(noteLabel, gbc);
 
         add(contentPanel, BorderLayout.CENTER);
@@ -65,11 +70,13 @@ public class SummaryStep extends JPanel implements WizardStepPanel {
         gbc.gridy = row;
         gbc.gridwidth = 1;
         JLabel headerLabel = new JLabel(labelText);
-        headerLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        headerLabel.setFont(AppTheme.FONT_BODY_BOLD);
+        headerLabel.setForeground(AppTheme.TEXT_PRIMARY);
         panel.add(headerLabel, gbc);
 
         gbc.gridx = 1;
-        valueLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        valueLabel.setFont(AppTheme.FONT_BODY);
+        valueLabel.setForeground(AppTheme.TEXT_BODY);
         panel.add(valueLabel, gbc);
     }
 
@@ -86,7 +93,7 @@ public class SummaryStep extends JPanel implements WizardStepPanel {
         dbPathValLabel.setText(data.getDbPath());
         themeValLabel.setText(data.getTheme());
         languageValLabel.setText(data.getLanguage());
-        reminderValLabel.setText(data.getReminderMinutes() + " minutes before due date");
+        reminderValLabel.setText(data.getReminderMinutes() + " minutes before deadline");
         autoBackupValLabel.setText(data.isAutoBackup() ? "Enabled" : "Disabled");
     }
 }
