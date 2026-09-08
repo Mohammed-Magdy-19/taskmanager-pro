@@ -1,5 +1,6 @@
 package com.taskmanager.view;
 
+import com.taskmanager.util.SwingSafe;
 import com.taskmanager.view.components.CardPanel;
 import com.taskmanager.view.theme.AppTheme;
 import com.taskmanager.view.theme.TranslucentScrollBarUI;
@@ -169,6 +170,7 @@ public class TaskPanel extends JPanel {
      * Toggles between table view and empty state based on row count.
      */
     public void updateViewMode() {
+        SwingSafe.assertEDT();
         if (tableModel.getRowCount() == 0) {
             contentCardLayout.show(contentCardPanel, VIEW_EMPTY);
         } else {

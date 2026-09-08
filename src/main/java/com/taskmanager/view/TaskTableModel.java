@@ -3,6 +3,7 @@ package com.taskmanager.view;
 import com.taskmanager.model.Task;
 import com.taskmanager.model.enums.Priority;
 import com.taskmanager.model.enums.Status;
+import com.taskmanager.util.SwingSafe;
 import com.taskmanager.view.theme.AppTheme;
 
 import javax.swing.BorderFactory;
@@ -52,6 +53,7 @@ public class TaskTableModel extends AbstractTableModel {
      * @param tasks the new list of tasks
      */
     public void setTasks(List<Task> tasks) {
+        SwingSafe.assertEDT();
         this.tasks = (tasks != null) ? new ArrayList<>(tasks) : new ArrayList<>();
         fireTableDataChanged();
     }

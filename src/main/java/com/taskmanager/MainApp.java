@@ -37,10 +37,13 @@ public class MainApp {
 
     /**
      * Launches the main workspace window once configuration is established.
-     * Instantiates {@link com.taskmanager.view.MainFrame}.
+     * Instantiates {@link com.taskmanager.view.MainFrame} and initializes
+     * {@link com.taskmanager.service.NotificationServiceImpl}.
      */
     public static void launchMainApp() {
         LOGGER.info("Launching MainFrame.");
-        new com.taskmanager.view.MainFrame().setVisible(true);
+        com.taskmanager.view.MainFrame mainFrame = new com.taskmanager.view.MainFrame();
+        mainFrame.setVisible(true);
+        new com.taskmanager.service.NotificationServiceImpl();
     }
 }

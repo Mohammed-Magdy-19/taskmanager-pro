@@ -26,6 +26,15 @@ public final class AppLogger {
     }
 
     /**
+     * Logs a fine-grained debug message.
+     *
+     * @param message the debug details
+     */
+    public void debug(String message) {
+        logger.log(Level.FINE, message);
+    }
+
+    /**
      * Logs an informational message.
      *
      * @param message the message to record

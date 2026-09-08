@@ -3,6 +3,7 @@ package com.taskmanager.service;
 import com.taskmanager.model.Task;
 import com.taskmanager.repository.TaskRepository;
 
+import com.taskmanager.concurrency.ReminderScheduler;
 import com.taskmanager.validation.TaskValidator;
 import com.taskmanager.validation.ValidationException;
 import com.taskmanager.validation.ValidationResult;
@@ -69,17 +70,18 @@ public class TaskServiceImpl extends GenericService<Task> {
 
     @Override
     protected void afterCreate(Task task) {
-        // Empty hook: reserved for Phase 5 reminder scheduling
+        ReminderScheduler.getInstance().scheduleReminder(task);
     }
 
     @Override
     protected void afterUpdate(Task task) {
-        // Empty hook: reserved for Phase 5 reminder rescheduling
+        ReminderScheduler.getInstance().cancelReminder(task.getId());
+        ReminderScheduler.getInstance().scheduleReminder(task);
     }
 
     @Override
     protected void afterDelete(int id) {
-        // Empty hook: reserved for Phase 5 reminder cancellation
+        ReminderScheduler.getInstance().cancelReminder(id);
     }
 
     /**

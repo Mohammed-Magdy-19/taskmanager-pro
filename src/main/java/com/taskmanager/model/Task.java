@@ -51,6 +51,36 @@ public class Task extends BaseEntity {
     }
 
     /**
+     * Copy constructor creating an independent snapshot of another task instance.
+     *
+     * @param other the task to copy from
+     */
+    public Task(Task other) {
+        super();
+        if (other != null) {
+            this.id = other.id;
+            this.createdAt = other.createdAt;
+            this.updatedAt = other.updatedAt;
+            this.title = other.title;
+            this.description = other.description;
+            this.priority = other.priority;
+            this.status = other.status;
+            this.dueDate = other.dueDate;
+            this.category = other.category;
+            this.tags = other.tags;
+        }
+    }
+
+    /**
+     * Creates an independent defensive copy of this task.
+     *
+     * @return a new Task snapshot instance
+     */
+    public Task copy() {
+        return new Task(this);
+    }
+
+    /**
      * Gets the task title.
      *
      * @return the title

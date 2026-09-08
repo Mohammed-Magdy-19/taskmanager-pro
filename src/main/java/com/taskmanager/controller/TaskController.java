@@ -1,14 +1,19 @@
 package com.taskmanager.controller;
 
+import com.taskmanager.concurrency.ThreadPoolManager;
+import com.taskmanager.event.EventBus;
+import com.taskmanager.event.TaskProcessedEvent;
 import com.taskmanager.model.Task;
 import com.taskmanager.model.enums.Priority;
 import com.taskmanager.model.enums.Status;
 import com.taskmanager.service.TaskServiceImpl;
+import com.taskmanager.util.AppLogger;
 import com.taskmanager.view.TaskFormDialog;
 import com.taskmanager.view.TaskPanel;
 
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 import java.awt.Window;
 import java.util.List;
 import java.util.Objects;
@@ -16,14 +21,19 @@ import java.util.Objects;
 /**
  * Controller mediating user interactions between {@link TaskPanel}, {@link TaskFormDialog},
  * and the domain service {@link TaskServiceImpl}.
+ * Routes all persistence writes through {@link ThreadPoolManager} and subscribes to
+ * {@link TaskProcessedEvent} for decoupled UI synchronization.
  */
 public class TaskController {
+
+    private static final AppLogger LOGGER = AppLogger.getLogger(TaskController.class);
 
     private final TaskServiceImpl taskService;
     private final TaskPanel taskPanel;
 
     /**
-     * Constructs the TaskController and wires UI event listeners.
+     * Constructs the TaskController, wires UI event listeners, and registers
+     * the decoupled event bus subscriber for task lifecycle events.
      *
      * @param taskService the task service handling persistence and business rules
      * @param taskPanel the visual task panel
@@ -33,6 +43,7 @@ public class TaskController {
         this.taskPanel = Objects.requireNonNull(taskPanel, "taskPanel must not be null");
 
         initListeners();
+        initEventSubscription();
         refreshTable();
     }
 
@@ -48,8 +59,14 @@ public class TaskController {
         });
     }
 
+    private void initEventSubscription() {
+        EventBus.getInstance().subscribe(TaskProcessedEvent.class, event -> refreshTable());
+    }
+
     /**
      * Handles the creation of a new task via {@link TaskFormDialog}.
+     * Executes the persistence operation asynchronously on the shared thread pool
+     * and publishes {@link TaskProcessedEvent} upon completion.
      */
     public void onAddClicked() {
         Window parent = SwingUtilities.getWindowAncestor(taskPanel);
@@ -57,13 +74,22 @@ public class TaskController {
         dialog.setVisible(true);
 
         if (dialog.isConfirmed() && dialog.getTask() != null) {
-            taskService.create(dialog.getTask());
-            refreshTable();
+            final Task draftTask = dialog.getTask();
+            ThreadPoolManager.getInstance().submit(() -> {
+                try {
+                    Task created = taskService.create(draftTask);
+                    EventBus.getInstance().publish(new TaskProcessedEvent(created));
+                } catch (Exception ex) {
+                    LOGGER.error("Failed to create task asynchronously", ex);
+                }
+            });
         }
     }
 
     /**
      * Handles editing the selected task via {@link TaskFormDialog}.
+     * Executes the update operation asynchronously on the shared thread pool
+     * and publishes {@link TaskProcessedEvent} upon completion.
      */
     public void onEditClicked() {
         int selectedRow = taskPanel.getTaskTable().getSelectedRow();
@@ -82,13 +108,22 @@ public class TaskController {
         dialog.setVisible(true);
 
         if (dialog.isConfirmed() && dialog.getTask() != null) {
-            taskService.update(dialog.getTask());
-            refreshTable();
+            final Task draftTask = dialog.getTask();
+            ThreadPoolManager.getInstance().submit(() -> {
+                try {
+                    Task updated = taskService.update(draftTask);
+                    EventBus.getInstance().publish(new TaskProcessedEvent(updated));
+                } catch (Exception ex) {
+                    LOGGER.error("Failed to update task asynchronously", ex);
+                }
+            });
         }
     }
 
     /**
      * Handles deletion of the currently selected task after user confirmation.
+     * Executes the deletion asynchronously on the shared thread pool
+     * and publishes {@link TaskProcessedEvent} upon completion.
      */
     public void onDeleteClicked() {
         int selectedRow = taskPanel.getTaskTable().getSelectedRow();
@@ -112,13 +147,21 @@ public class TaskController {
         );
 
         if (choice == JOptionPane.YES_OPTION) {
-            taskService.delete(taskToDelete.getId());
-            refreshTable();
+            final int taskId = taskToDelete.getId();
+            final Task snapshot = taskToDelete.copy();
+            ThreadPoolManager.getInstance().submit(() -> {
+                try {
+                    taskService.delete(taskId);
+                    EventBus.getInstance().publish(new TaskProcessedEvent(snapshot));
+                } catch (Exception ex) {
+                    LOGGER.error("Failed to delete task asynchronously", ex);
+                }
+            });
         }
     }
 
     /**
-     * Filters tasks based on a keyword match across title and description.
+     * Filters tasks based on a keyword query using a background {@link SwingWorker}.
      *
      * @param keyword the search query
      */
@@ -127,19 +170,34 @@ public class TaskController {
             refreshTable();
             return;
         }
-        List<Task> results = (taskService.getTaskRepository() != null) ?
-                taskService.getTaskRepository().searchByKeyword(keyword.trim()) :
-                taskService.findAll().stream()
-                        .filter(t -> t.getTitle().toLowerCase().contains(keyword.toLowerCase()) ||
-                                (t.getDescription() != null && t.getDescription().toLowerCase().contains(keyword.toLowerCase())))
+        final String query = keyword.trim();
+        new SwingWorker<List<Task>, Void>() {
+            @Override
+            protected List<Task> doInBackground() {
+                if (taskService.getTaskRepository() != null) {
+                    return taskService.getTaskRepository().searchByKeyword(query);
+                }
+                return taskService.findAll().stream()
+                        .filter(t -> (t.getTitle() != null && t.getTitle().toLowerCase().contains(query.toLowerCase())) ||
+                                (t.getDescription() != null && t.getDescription().toLowerCase().contains(query.toLowerCase())))
                         .toList();
+            }
 
-        taskPanel.getTableModel().setTasks(results);
-        taskPanel.updateViewMode();
+            @Override
+            protected void done() {
+                try {
+                    List<Task> results = get();
+                    taskPanel.getTableModel().setTasks(results);
+                    taskPanel.updateViewMode();
+                } catch (Exception ex) {
+                    LOGGER.error("Search operation failed for query: " + query, ex);
+                }
+            }
+        }.execute();
     }
 
     /**
-     * Filters tasks according to the chosen category or status from the combo box.
+     * Filters tasks according to the chosen category or status using a {@link SwingWorker}.
      *
      * @param filter the selected filter name
      */
@@ -149,21 +207,33 @@ public class TaskController {
             return;
         }
 
-        List<Task> results;
-        if ("Pending".equalsIgnoreCase(filter)) {
-            results = filterByStatus(Status.PENDING);
-        } else if ("In Progress".equalsIgnoreCase(filter)) {
-            results = filterByStatus(Status.IN_PROGRESS);
-        } else if ("Completed".equalsIgnoreCase(filter)) {
-            results = filterByStatus(Status.COMPLETED);
-        } else if ("High Priority".equalsIgnoreCase(filter)) {
-            results = filterByPriority(Priority.HIGH);
-        } else {
-            results = taskService.findAll();
-        }
+        new SwingWorker<List<Task>, Void>() {
+            @Override
+            protected List<Task> doInBackground() {
+                if ("Pending".equalsIgnoreCase(filter)) {
+                    return filterByStatus(Status.PENDING);
+                } else if ("In Progress".equalsIgnoreCase(filter)) {
+                    return filterByStatus(Status.IN_PROGRESS);
+                } else if ("Completed".equalsIgnoreCase(filter)) {
+                    return filterByStatus(Status.COMPLETED);
+                } else if ("High Priority".equalsIgnoreCase(filter)) {
+                    return filterByPriority(Priority.HIGH);
+                } else {
+                    return taskService.findAll();
+                }
+            }
 
-        taskPanel.getTableModel().setTasks(results);
-        taskPanel.updateViewMode();
+            @Override
+            protected void done() {
+                try {
+                    List<Task> results = get();
+                    taskPanel.getTableModel().setTasks(results);
+                    taskPanel.updateViewMode();
+                } catch (Exception ex) {
+                    LOGGER.error("Filter operation failed for: " + filter, ex);
+                }
+            }
+        }.execute();
     }
 
     private List<Task> filterByStatus(Status status) {
@@ -181,11 +251,25 @@ public class TaskController {
     }
 
     /**
-     * Refreshes the table view with the latest tasks from the database.
+     * Refreshes the table view with the latest tasks from the database via {@link SwingWorker}.
      */
     public void refreshTable() {
-        List<Task> tasks = taskService.findAll();
-        taskPanel.getTableModel().setTasks(tasks);
-        taskPanel.updateViewMode();
+        new SwingWorker<List<Task>, Void>() {
+            @Override
+            protected List<Task> doInBackground() {
+                return taskService.findAll();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    List<Task> tasks = get();
+                    taskPanel.getTableModel().setTasks(tasks);
+                    taskPanel.updateViewMode();
+                } catch (Exception ex) {
+                    LOGGER.error("Failed to refresh task table", ex);
+                }
+            }
+        }.execute();
     }
 }
