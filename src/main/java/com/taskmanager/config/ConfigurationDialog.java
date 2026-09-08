@@ -5,11 +5,16 @@ import com.taskmanager.config.wizard.PreferencesStep;
 import com.taskmanager.config.wizard.ReminderStep;
 import com.taskmanager.config.wizard.WizardData;
 import com.taskmanager.config.wizard.WizardStepPanel;
+import com.taskmanager.controller.SettingsController;
+import com.taskmanager.event.BackupCompletedEvent;
+import com.taskmanager.event.EventBus;
+import com.taskmanager.view.components.CardPanel;
 import com.taskmanager.view.theme.AppTheme;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JDialog;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import java.awt.BorderLayout;
@@ -30,6 +35,7 @@ public class ConfigurationDialog extends JDialog {
 
     private final WizardData settingsData = new WizardData();
     private final List<WizardStepPanel> stepPanels = new ArrayList<>();
+    private final SettingsController settingsController;
 
     /**
      * Constructs a modal configuration dialog bound to a parent window frame.
@@ -38,11 +44,25 @@ public class ConfigurationDialog extends JDialog {
      */
     public ConfigurationDialog(Frame owner) {
         super(owner, "Task Manager — Settings", true);
+        this.settingsController = new SettingsController();
 
         initWindow();
         loadExistingConfiguration();
         initTabs();
         initControls();
+        initEventSubscription();
+    }
+
+    private void initEventSubscription() {
+        EventBus.getInstance().subscribe(BackupCompletedEvent.class, event -> {
+            if (isVisible()) {
+                JOptionPane.showMessageDialog(this,
+                        "Backup archive generated successfully!\nFile: " + event.getBackupFile().getName()
+                                + "\nTasks backed up: " + event.getTaskCount(),
+                        "Backup Complete",
+                        JOptionPane.INFORMATION_MESSAGE);
+            }
+        });
     }
 
     /**
@@ -85,8 +105,53 @@ public class ConfigurationDialog extends JDialog {
         tabbedPane.addTab("Database", dbStep);
         tabbedPane.addTab("Preferences", prefStep);
         tabbedPane.addTab("Reminders", reminderStep);
+        tabbedPane.addTab("Backup", createBackupTab());
 
         add(tabbedPane, BorderLayout.CENTER);
+    }
+
+    private JPanel createBackupTab() {
+        CardPanel card = new CardPanel(new BorderLayout(0, AppTheme.SPACING));
+        card.setBorder(BorderFactory.createEmptyBorder(AppTheme.SPACING, AppTheme.SPACING, AppTheme.SPACING, AppTheme.SPACING));
+
+        JPanel contentBox = new JPanel();
+        contentBox.setLayout(new javax.swing.BoxLayout(contentBox, javax.swing.BoxLayout.Y_AXIS));
+        contentBox.setOpaque(false);
+
+        javax.swing.JLabel backupTitle = new javax.swing.JLabel("Database Backup & Disaster Recovery");
+        backupTitle.setFont(AppTheme.FONT_SUBHEADING);
+        backupTitle.setForeground(AppTheme.TEXT_PRIMARY);
+
+        javax.swing.JLabel backupDesc = new javax.swing.JLabel("Export tasks and user records to a serialized backup archive (.ser), or restore from an existing archive.");
+        backupDesc.setFont(AppTheme.FONT_BODY);
+        backupDesc.setForeground(AppTheme.TEXT_MUTED);
+
+        contentBox.add(backupTitle);
+        contentBox.add(javax.swing.Box.createVerticalStrut(6));
+        contentBox.add(backupDesc);
+        contentBox.add(javax.swing.Box.createVerticalStrut(AppTheme.SPACING * 2));
+
+        JPanel actionsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, AppTheme.SPACING, 0));
+        actionsPanel.setOpaque(false);
+
+        JButton backupNowButton = new JButton("📦 Backup Now");
+        backupNowButton.setFont(AppTheme.FONT_BUTTON);
+        backupNowButton.setBackground(AppTheme.PRIMARY);
+        backupNowButton.setForeground(AppTheme.TEXT_INVERTED);
+        backupNowButton.addActionListener(e -> settingsController.createBackupAsync(this));
+
+        JButton restoreButton = new JButton("🔄 Restore from Backup...");
+        restoreButton.setFont(AppTheme.FONT_BUTTON);
+        restoreButton.addActionListener(e -> settingsController.restoreFromBackupAsync(this));
+
+        actionsPanel.add(backupNowButton);
+        actionsPanel.add(restoreButton);
+
+        contentBox.add(actionsPanel);
+        contentBox.add(javax.swing.Box.createVerticalGlue());
+
+        card.add(contentBox, BorderLayout.CENTER);
+        return card;
     }
 
     private void initControls() {

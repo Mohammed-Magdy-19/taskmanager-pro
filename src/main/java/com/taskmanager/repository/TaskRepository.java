@@ -27,6 +27,9 @@ public class TaskRepository extends GenericRepository<Task> {
     private static final String INSERT_SQL =
             "INSERT INTO tasks (title, description, priority, status, due_date, category, tags, created_at, updated_at) "
                     + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    private static final String INSERT_WITH_ID_SQL =
+            "INSERT INTO tasks (id, title, description, priority, status, due_date, category, tags, created_at, updated_at) "
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     private static final String UPDATE_SQL =
             "UPDATE tasks SET title = ?, description = ?, priority = ?, status = ?, due_date = ?, category = ?, "
                     + "tags = ?, updated_at = ? WHERE id = ?";
@@ -97,9 +100,40 @@ public class TaskRepository extends GenericRepository<Task> {
         Connection conn = dbConnection.getConnection();
         try (PreparedStatement stmt = conn.prepareStatement(UPDATE_SQL)) {
             bindUpdateParameters(stmt, task);
+            int rowsAffected = stmt.executeUpdate();
+            if (rowsAffected == 0) {
+                return insertWithId(task);
+            }
+        }
+        return task;
+    }
+
+    private Task insertWithId(Task task) throws SQLException {
+        if (task.getCreatedAt() == null) {
+            task.setCreatedAt(LocalDateTime.now());
+        }
+        if (task.getUpdatedAt() == null) {
+            task.setUpdatedAt(LocalDateTime.now());
+        }
+        Connection conn = dbConnection.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(INSERT_WITH_ID_SQL)) {
+            bindInsertWithIdParameters(stmt, task);
             stmt.executeUpdate();
         }
         return task;
+    }
+
+    private void bindInsertWithIdParameters(PreparedStatement stmt, Task task) throws SQLException {
+        stmt.setInt(1, task.getId());
+        stmt.setString(2, task.getTitle());
+        stmt.setString(3, task.getDescription());
+        stmt.setString(4, task.getPriority() != null ? task.getPriority().name() : Priority.MEDIUM.name());
+        stmt.setString(5, task.getStatus() != null ? task.getStatus().name() : Status.PENDING.name());
+        stmt.setString(6, task.getDueDate() != null ? task.getDueDate().toString() : null);
+        stmt.setString(7, task.getCategory());
+        stmt.setString(8, task.getTags());
+        stmt.setString(9, task.getCreatedAt() != null ? task.getCreatedAt().toString() : LocalDateTime.now().toString());
+        stmt.setString(10, task.getUpdatedAt() != null ? task.getUpdatedAt().toString() : LocalDateTime.now().toString());
     }
 
     @Override
