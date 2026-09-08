@@ -9,8 +9,6 @@ import com.taskmanager.config.wizard.WizardData;
 import com.taskmanager.config.wizard.WizardStepPanel;
 
 import javax.swing.BorderFactory;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
