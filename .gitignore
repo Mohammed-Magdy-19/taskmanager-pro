@@ -1,0 +1,5 @@
+target/
+*.db
+*.ser
+config.properties
+.vscode/settings.json
