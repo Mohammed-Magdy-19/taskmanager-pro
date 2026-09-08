@@ -63,6 +63,48 @@ public final class AppTheme {
     /** Warm neutral for inactive progress tracks and indicators */
     public static final Color STEP_INACTIVE = Color.decode("#EADFD3");
 
+    // --- Table & List Tokens ---
+
+    /** Alternating zebra row background (contrast > 12:1 against TEXT_BODY) */
+    public static final Color BG_TABLE_ZEBRA = Color.decode("#FAF6F0");
+
+    /** Hovered table row background (contrast > 11:1 against TEXT_BODY) */
+    public static final Color BG_TABLE_HOVER = Color.decode("#F4EDE4");
+
+    /** Selected table row background */
+    public static final Color BG_TABLE_SELECTED = Color.decode("#FFF0ED");
+
+    /** Subtle table grid/divider border */
+    public static final Color BORDER_TABLE = Color.decode("#F0E6DA");
+
+    // --- Scrollbar Tokens ---
+
+    /** Translucent scrollbar thumb at rest (derived from TEXT_PRIMARY with low alpha) */
+    public static final Color SCROLLBAR_THUMB_IDLE = new Color(45, 49, 66, 70);
+
+    /** Translucent scrollbar thumb on hover (derived from TEXT_PRIMARY with increased alpha) */
+    public static final Color SCROLLBAR_THUMB_HOVER = new Color(45, 49, 66, 150);
+
+    // --- Priority & Status Badge Tokens (Strict WCAG AA Verified) ---
+
+    public static final Color PILL_HIGH_BG = Color.decode("#D32F2F");
+    public static final Color PILL_HIGH_FG = Color.WHITE;
+
+    public static final Color PILL_MED_BG = Color.decode("#FFB347");
+    public static final Color PILL_MED_FG = Color.decode("#2D3142");
+
+    public static final Color PILL_LOW_BG = Color.decode("#6BCB77");
+    public static final Color PILL_LOW_FG = Color.decode("#2D3142");
+
+    public static final Color PILL_PENDING_BG = Color.decode("#FFE8D6");
+    public static final Color PILL_PENDING_FG = Color.decode("#595551");
+
+    public static final Color PILL_PROGRESS_BG = Color.decode("#E3F2FD");
+    public static final Color PILL_PROGRESS_FG = Color.decode("#1565C0");
+
+    public static final Color PILL_COMPLETED_BG = Color.decode("#E8F5E9");
+    public static final Color PILL_COMPLETED_FG = Color.decode("#2E7D32");
+
     // --- Typography Hierarchy: Fredoka (Headings) + Quicksand (Body & Controls) ---
 
     public static final Font FONT_HEADING;
@@ -71,6 +113,7 @@ public final class AppTheme {
     public static final Font FONT_BODY_BOLD;
     public static final Font FONT_BUTTON;
     public static final Font FONT_CAPTION;
+    public static final Font FONT_PILL;
 
     // --- Geometry & Metrics ---
 
@@ -88,6 +131,7 @@ public final class AppTheme {
         FONT_BODY_BOLD = bodyBase.deriveFont(Font.BOLD, 13f);
         FONT_BUTTON = bodyBase.deriveFont(Font.BOLD, 13.5f);
         FONT_CAPTION = bodyBase.deriveFont(Font.PLAIN, 11.5f);
+        FONT_PILL = bodyBase.deriveFont(Font.BOLD, 11.5f);
     }
 
     private AppTheme() {

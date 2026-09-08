@@ -5,9 +5,6 @@ import com.taskmanager.config.ConfigWizardFrame;
 import com.taskmanager.util.AppLogger;
 import com.taskmanager.view.theme.AppTheme;
 
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 
 /**
@@ -40,17 +37,10 @@ public class MainApp {
 
     /**
      * Launches the main workspace window once configuration is established.
-     * In Phase 4, this instantiates {@code com.taskmanager.view.MainFrame}.
+     * Instantiates {@link com.taskmanager.view.MainFrame}.
      */
     public static void launchMainApp() {
-        System.out.println("Main app would launch here");
-        JFrame frame = new JFrame("Task Manager");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(800, 600);
-        frame.setLocationRelativeTo(null);
-        JLabel placeholderLabel = new JLabel("Main app would launch here (Phase 4)", SwingConstants.CENTER);
-        placeholderLabel.setFont(AppTheme.FONT_HEADING);
-        frame.add(placeholderLabel);
-        frame.setVisible(true);
+        LOGGER.info("Launching MainFrame.");
+        new com.taskmanager.view.MainFrame().setVisible(true);
     }
 }

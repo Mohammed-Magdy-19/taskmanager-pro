@@ -3,24 +3,23 @@ package com.taskmanager.service;
 import com.taskmanager.model.Task;
 import com.taskmanager.repository.TaskRepository;
 
-import java.time.LocalDateTime;
+import com.taskmanager.validation.TaskValidator;
+import com.taskmanager.validation.ValidationException;
+import com.taskmanager.validation.ValidationResult;
 
 /**
  * Service implementation for managing {@link Task} entities.
- * Extends {@link GenericService} using the Template Method pattern.
- *
- * <p>
- * <em>Note: Inline validation logic implemented here is temporary until Phase 4
- * introduces the dedicated {@code Validator<T>} and {@code TaskValidator}
- * components.</em>
- * </p>
+ * Extends {@link GenericService} using the Template Method pattern and
+ * delegates
+ * entity validation to {@link TaskValidator}.
  */
 public class TaskServiceImpl extends GenericService<Task> {
 
     /** Maximum permitted length for a task title. */
-    public static final int MAX_TITLE_LENGTH = 100;
+    public static final int MAX_TITLE_LENGTH = TaskValidator.MAX_TITLE_LENGTH;
 
     private final TaskRepository taskRepository;
+    private final TaskValidator validator = new TaskValidator();
 
     /**
      * Constructs a task service with the given SQLite task repository.
@@ -84,24 +83,16 @@ public class TaskServiceImpl extends GenericService<Task> {
     }
 
     /**
-     * Performs domain validation on the task entity.
+     * Performs domain validation on the task entity using the centralized
+     * {@link TaskValidator}.
      *
      * @param task the task to validate
-     * @throws IllegalArgumentException if validation rules are violated
+     * @throws ValidationException if validation rules are violated
      */
     private void validateTask(Task task) {
-        if (task == null) {
-            throw new IllegalArgumentException("Task cannot be null");
-        }
-        if (task.getTitle() == null || task.getTitle().trim().isEmpty()) {
-            throw new IllegalArgumentException("Task title cannot be blank");
-        }
-        if (task.getTitle().trim().length() > MAX_TITLE_LENGTH) {
-            throw new IllegalArgumentException(
-                    "Task title cannot exceed " + MAX_TITLE_LENGTH + " characters");
-        }
-        if (task.getDueDate() != null && task.getDueDate().isBefore(LocalDateTime.now())) {
-            throw new IllegalArgumentException("Task due date cannot be in the past");
+        ValidationResult result = validator.validate(task);
+        if (!result.isValid()) {
+            throw new ValidationException(result);
         }
     }
 }
