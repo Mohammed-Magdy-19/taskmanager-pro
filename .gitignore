@@ -1,4 +1,6 @@
 target/
+dist/
+dependency-reduced-pom.xml
 *.db
 *.ser
 config.properties

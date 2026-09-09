@@ -3,15 +3,21 @@ package com.taskmanager.service;
 import com.taskmanager.model.Task;
 import com.taskmanager.model.enums.Priority;
 import com.taskmanager.model.enums.Status;
+import com.taskmanager.concurrency.ReminderScheduler;
 import com.taskmanager.repository.GenericRepository;
+import com.taskmanager.repository.TaskRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 @DisplayName("TaskServiceImpl Tests")
 class TaskServiceImplTest {
@@ -21,8 +27,14 @@ class TaskServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        ReminderScheduler.getInstance().cancelAllReminders();
         repository = new GenericRepository<>(Task.class);
         service = new TaskServiceImpl(repository);
+    }
+
+    @AfterEach
+    void tearDown() {
+        ReminderScheduler.getInstance().cancelAllReminders();
     }
 
     @Test
@@ -186,5 +198,94 @@ class TaskServiceImplTest {
 
         assertFalse(service.findById(id).isPresent());
         assertEquals(0, repository.count());
+    }
+
+    @Test
+    @DisplayName("Mockito: Validation failure blocks create persistence (repository.save never called)")
+    void testMockitoValidationBlocksCreatePersistence() {
+        TaskRepository mockRepo = mock(TaskRepository.class);
+        TaskServiceImpl mockService = new TaskServiceImpl(mockRepo);
+
+        Task invalidTask = new Task("", "Blank title", Priority.LOW, Status.PENDING, null, null, null);
+
+        assertThrows(IllegalArgumentException.class, () -> mockService.create(invalidTask));
+        verify(mockRepo, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Mockito: Validation failure blocks update persistence (repository.save never called)")
+    void testMockitoValidationBlocksUpdatePersistence() {
+        TaskRepository mockRepo = mock(TaskRepository.class);
+        when(mockRepo.existsById(10)).thenReturn(true);
+        TaskServiceImpl mockService = new TaskServiceImpl(mockRepo);
+
+        Task invalidTask = new Task("   ", "Whitespace title", Priority.LOW, Status.PENDING, null, null, null);
+        invalidTask.setId(10);
+
+        assertThrows(IllegalArgumentException.class, () -> mockService.update(invalidTask));
+        verify(mockRepo, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Mockito: Exception propagation on repository failure during create")
+    void testMockitoCreateExceptionPropagation() {
+        TaskRepository mockRepo = mock(TaskRepository.class);
+        when(mockRepo.save(any(Task.class))).thenThrow(new RuntimeException("SQLite disk failure"));
+        TaskServiceImpl mockService = new TaskServiceImpl(mockRepo);
+
+        Task validTask = new Task("Valid Task", "Desc", Priority.MEDIUM, Status.PENDING, null, null, null);
+
+        RuntimeException thrown = assertThrows(RuntimeException.class, () -> mockService.create(validTask));
+        assertEquals("SQLite disk failure", thrown.getMessage());
+        verify(mockRepo, times(1)).save(validTask);
+    }
+
+    @Test
+    @DisplayName("Mockito: Exception propagation on repository failure during update")
+    void testMockitoUpdateExceptionPropagation() {
+        TaskRepository mockRepo = mock(TaskRepository.class);
+        when(mockRepo.existsById(5)).thenReturn(true);
+        when(mockRepo.save(any(Task.class))).thenThrow(new RuntimeException("Database write lock error"));
+        TaskServiceImpl mockService = new TaskServiceImpl(mockRepo);
+
+        Task validTask = new Task("Valid Task", "Desc", Priority.MEDIUM, Status.PENDING, null, null, null);
+        validTask.setId(5);
+
+        RuntimeException thrown = assertThrows(RuntimeException.class, () -> mockService.update(validTask));
+        assertEquals("Database write lock error", thrown.getMessage());
+        verify(mockRepo, times(1)).save(validTask);
+    }
+
+    @Test
+    @DisplayName("Mockito: Hook call counts, execution ordering, and reminder coordination")
+    void testMockitoHookCallCountsAndOrdering() {
+        TaskRepository mockRepo = mock(TaskRepository.class);
+        when(mockRepo.existsById(20)).thenReturn(true);
+        when(mockRepo.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
+        TaskServiceImpl mockService = new TaskServiceImpl(mockRepo);
+
+        // 1. Create flow
+        Task task = new Task("Hook Task", "Testing lifecycle", Priority.HIGH, Status.PENDING,
+                LocalDateTime.now().plusHours(3), "Cat", null);
+        task.setId(20);
+
+        Task created = mockService.create(task);
+        assertNotNull(created);
+        verify(mockRepo, times(1)).save(task);
+        assertTrue(ReminderScheduler.getInstance().hasActiveReminder(20));
+
+        // 2. Update flow: cancel-before-reschedule
+        task.setTitle("Updated Hook Task");
+        Task updated = mockService.update(task);
+        assertNotNull(updated);
+        verify(mockRepo, times(2)).save(task);
+        assertTrue(ReminderScheduler.getInstance().hasActiveReminder(20));
+
+        // 3. Delete flow: existsById check precedes deleteById, reminder is cancelled
+        mockService.delete(20);
+        InOrder inOrder = inOrder(mockRepo);
+        inOrder.verify(mockRepo).existsById(20);
+        inOrder.verify(mockRepo).deleteById(20);
+        assertFalse(ReminderScheduler.getInstance().hasActiveReminder(20));
     }
 }

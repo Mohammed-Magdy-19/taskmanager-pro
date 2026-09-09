@@ -162,8 +162,8 @@ public class NotificationServiceImpl implements NotificationService {
             try {
                 SystemTray.getSystemTray().remove(trayIcon);
                 trayIcon = null;
-            } catch (Exception ignored) {
-                // Best-effort cleanup
+            } catch (Exception e) {
+                LOGGER.warn("Failed to remove system tray icon during cleanup: " + e.getMessage());
             }
         }
     }
